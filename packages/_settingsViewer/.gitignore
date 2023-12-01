@@ -1,0 +1,6 @@
+node_modules/
+static/bundle.js
+dist
+out
+coverage
+*.tgz

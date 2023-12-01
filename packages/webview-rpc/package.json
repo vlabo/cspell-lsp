@@ -1,0 +1,66 @@
+{
+  "name": "vscode-webview-rpc",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Make JSON-RPC calls to VSCode Webviews",
+  "sideEffects": false,
+  "main": "dist/cjs/index.js",
+  "types": "dist/cjs/index.d.ts",
+  "type": "commonjs",
+  "scripts": {
+    "build": "npm run build:tsc && npm run build:ts2mjs",
+    "build:tsc": "tsc -b tsconfig.json",
+    "build:ts2mjs": "ts2mjs dist/esm",
+    "build-production": "npm run clean && npm run build",
+    "watch": "concurrently npm:watch:*",
+    "watch:tsc": "tsc -b tsconfig.json --watch",
+    "watch:ts2mjs": "chokidar \"dist/esm/**/*.js\" -c \"ts2mjs dist/esm\"",
+    "clean": "shx rm -rf dist",
+    "coverage": "jest --coverage",
+    "test": "echo ok"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/cjs/index.d.ts",
+      "import": "./dist/esm/index.mjs",
+      "require": "./dist/cjs/index.js"
+    },
+    "./webview": {
+      "types": "./dist/cjs/webview/index.d.ts",
+      "import": "./dist/esm/webview/index.mjs",
+      "require": "./dist/cjs/webview/index.js"
+    },
+    "./extension": {
+      "types": "./dist/cjs/extension/index.d.ts",
+      "import": "./dist/esm/extension/index.mjs",
+      "require": "./dist/cjs/extension/index.js"
+    }
+  },
+  "keywords": [
+    "json-rpc",
+    "webviews",
+    "vscode"
+  ],
+  "author": "Street Side Software",
+  "license": "MIT",
+  "dependencies": {
+    "json-rpc-api": "file:../json-rpc-api",
+    "utils-disposables": "file:../utils-disposables",
+    "vscode-jsonrpc": "^8.2.0"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "!dist/**/*.test.*",
+    "!dist/**/test/**",
+    "!dist/esm/**/*.js",
+    "!dist/esm/**/*.ts"
+  ],
+  "engines": {
+    "node": ">18.0.0"
+  },
+  "devDependencies": {
+    "@tsconfig/svelte": "^5.0.2",
+    "@types/vscode": "^1.84.1"
+  }
+}

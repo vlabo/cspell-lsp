@@ -1,0 +1,13 @@
+{
+    "extends": "../../tsconfig.packages.base.json",
+    "compilerOptions": {
+        "lib": ["DOM", "DOM.Iterable", "ES2022"],
+        "esModuleInterop": true,
+        "jsx": "react",
+        "outDir": "dist",
+        "experimentalDecorators": true,
+        "types": ["node"]
+    },
+    "include": ["src/**/*"],
+    "exclude": ["coverage", "node_modules", "dist", "out"]
+}

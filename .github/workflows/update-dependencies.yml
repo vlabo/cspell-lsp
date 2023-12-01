@@ -1,0 +1,55 @@
+name: " 🔗 Update Dependencies Main"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "**/package.json"
+      - "**/package-lock.json"
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * 0"
+
+jobs:
+  update-dependencies:
+    if: github.repository_owner == 'streetsidesoftware'
+    runs-on: ubuntu-latest
+    env:
+      NEW_BRANCH: "update-dependencies-main"
+      REF_BRANCH: main
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF_BRANCH }}
+      - name: Info
+        run: |
+          npm -v
+          node -v
+      - name: Update
+        run: |
+          npm i
+          npm run build
+          npm run build:readme
+          npm run lint
+          npm run update-packages
+          npm i
+
+      - name: GenBody
+        id: body
+        uses: streetsidesoftware/actions/public/pr-body@v1
+        with:
+          title: Update ALL Dependencies
+          path: package.json
+
+      - name: PR
+        uses: ./.github/actions/pr
+        with:
+          commit-message: "ci: Update ALL Dependencies -- Workflow Bot"
+          branch: ${{ env.NEW_BRANCH }}
+          base: ${{ env.REF_BRANCH }}
+          title: "ci: Update ALL Dependencies (${{ env.REF_BRANCH }}) -- Workflow Bot"
+          body: ${{ steps.body.outputs.body }}
+          app_id: ${{ secrets.AUTOMATION_APP_ID }}
+          app_private_key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}

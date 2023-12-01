@@ -1,0 +1,50 @@
+# Ignore everything
+*
+*/**
+**/.DS_Store
+
+# Bring back the things we need.
+!CHANGELOG.md
+!images/SpellCheck.png
+!LICENSE
+
+# Include root level items
+!cspell.code-snippets
+
+# Always Exclude - but doesn't work
+**/*.d.ts
+**/*.map
+
+# Include the schema
+!node_modules/@cspell/cspell-types/cspell.schema.json
+
+# Dictionaries cannot be WebPacked
+!node_modules/@cspell/cspell-bundled-dicts/**
+!node_modules/@cspell/dict*/**
+
+# Regexp worker must NOT be WebPacked
+!node_modules/regexp-worker/*
+!node_modules/regexp-worker/lib/**/*.js
+
+# All Other Client and Server files.
+!packages/_server/dist/api.js
+!packages/_server/dist/main.cjs
+!packages/_server/package.json
+
+!packages/_serverPatternMatcher/dist/api.cjs
+!packages/_serverPatternMatcher/dist/main.cjs
+!packages/_serverPatternMatcher/package.json
+
+# Old settings viewer, to be removed
+!packages/_settingsViewer/dist/webapp/*.{js,html,LICENSE.txt}
+
+!packages/client/dist/**/*.js
+!packages/client/License.txt
+!packages/client/package.json
+!resources/**
+
+!packages/webview-ui/public/build/*.js
+!packages/webview-ui/public/build/*.css
+!packages/webview-ui/public/resources/**
+
+# cspell:ignore callsites
