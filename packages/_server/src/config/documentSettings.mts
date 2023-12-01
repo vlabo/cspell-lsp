@@ -217,7 +217,17 @@ export class DocumentSettings {
     }
 
     private async _fetchWorkspaceConfiguration(uri: DocumentUri): Promise<WorkspaceConfigForDocument> {
-        return this.api.clientRequest.onWorkspaceConfigForDocumentRequest({ uri });
+        const wConfig: WorkspaceConfigForDocument = {
+            uri: uri,
+            workspaceFile: undefined,
+            workspaceFolder: undefined,
+            words: {
+                user: true,
+            },
+            ignoreWords: {},
+        };
+        return Promise.resolve(wConfig);
+        // return this.api.clientRequest.onWorkspaceConfigForDocumentRequest({ uri });
     }
 
     get version(): number {
