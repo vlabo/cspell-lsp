@@ -145,6 +145,7 @@ export function run(): void {
                 codeActionProvider: {
                     codeActionKinds: [CodeActionKind.QuickFix],
                 },
+
             };
             return { capabilities };
         }),
@@ -278,10 +279,12 @@ export function run(): void {
             createOnCodeActionHandler(documents, {
                 fetchSettings: getBaseSettings,
                 getSettingsVersion: () => documentSettings.version,
-                fetchWorkspaceConfigForDocument: (uri) => documentSettings.fetchWorkspaceConfiguration(uri),
+                // fetchWorkspaceConfigForDocument: (uri) => documentSettings.fetchWorkspaceConfiguration(uri),
             }),
         ),
     );
+
+    // dd(connection.onCodeActionResolve(createOnActionResolveHandler()))
 
     // Free up the validation streams on shutdown.
     connection.onShutdown(() => {
