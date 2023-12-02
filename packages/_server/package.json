@@ -10,7 +10,8 @@
     "url": "https://github.com/streetsidesoftware/vscode-spell-checker"
   },
   "bin": {
-    "build": "./build.mjs"
+    "build": "./build.mjs",
+    "cspell-lsp": "index.js"
   },
   "type": "module",
   "main": "dist/main.cjs",
