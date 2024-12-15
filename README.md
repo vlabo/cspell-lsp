@@ -7,20 +7,16 @@ This is a fork of [vscode-spell-checker](https://github.com/streetsidesoftware/v
 ## Build
 ```
 npm install
-npm run build
+bun build ./main.ts --compile --outfile cspell-lsp
 ```
-
-## Install
-```
-npm link
-```
+> should work with npm
 
 ## Helix config
 `helix/languages.toml:`  
 ```
 [language-server.cspell]
 command = "cspell-lsp"
-args = ["--stdio"]
+args = ["--stdio", "--dictionary", "<path to dictionary file>"]
 
 # Add for every language that you want to spell check
 [[language]]
@@ -36,5 +32,3 @@ name = "markdown"
 language-servers = [ "marksman", "cspell" ]
 ```
 For reference https://github.com/helix-editor/helix/blob/86023cf1e6c9ab12446061e40c838335c5790979/languages.toml
-
-> Custom dictionaries and configurations are not supported

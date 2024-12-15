@@ -1,2 +1,0 @@
-
-cspell:dictionaries dictionary_name

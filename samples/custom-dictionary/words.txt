@@ -1,6 +1,0 @@
-word
-worda
-wordb
-wordc
-wordd
-worde
