@@ -1,8 +1,0 @@
-# Revinate Terms
-Madar
-Revinate
-autoload
-ext-mbstring
-jasondent
-notting
-phpunit

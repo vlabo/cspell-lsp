@@ -1,3 +1,0 @@
-# custom dictionary for samples directory
-
-samplewords
