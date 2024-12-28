@@ -15,7 +15,7 @@ import * as fs from 'fs';
 import * as readline from 'readline';
 
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { getDefaultSettings, constructSettingsForText } from "cspell-lib";
+import { getDefaultSettings, constructSettingsForText, CSpellSettings } from "cspell-lib";
 
 import * as Validator from './validator.mjs';
 import { createOnCodeActionHandler } from "./codeActions.mts";
@@ -25,6 +25,7 @@ const args = process.argv.slice(2);
 
 let dictionaryPath: string | null = null;
 
+let settingsCache: Map<string, CSpellSettings> = new Map();
 export let userWords: Array<string> = [];
 
 // Iterate over the arguments to find '--dictionary'
@@ -132,13 +133,22 @@ documents.onDidChangeContent((change) => {
 async function validateTextDocument(
   textDocument: TextDocument,
 ): Promise<void> {
-  // TODO: add settings cache
-  const settings = constructSettingsForText(await getDefaultSettings(), textDocument.getText(), textDocument.languageId);
-  settings.userWords = [...userWords];
+  const settings = await getSettigsForDocument(textDocument);
 
   const diagnostics: Diagnostic[] = await Validator.validateTextDocument(textDocument, settings);
   // Send the computed diagnostics to the editor.
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+}
+
+export async function getSettigsForDocument(textDocument: TextDocument) : Promise<CSpellSettings> {
+    let cached = settingsCache.get(textDocument.uri);
+    if(cached) {
+      return cached;
+    }
+    const settings = constructSettingsForText(await getDefaultSettings(), undefined, textDocument.languageId);
+    settings.userWords = [...userWords];
+    settingsCache[textDocument.uri] = settings;
+    return settings
 }
 
 connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
@@ -160,6 +170,8 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
         fs.appendFile(dictionaryPath, word + "\n", () => { });
       }
       await validateTextDocument(document);
+      // Clear settings cache
+      settingsCache = new Map();
       return { result: `Added "${word}" to the dictionary.` };
     }
 
