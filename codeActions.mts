@@ -8,7 +8,7 @@ import { Diagnostic, WorkspaceEdit } from 'vscode-languageserver-types';
 import { CodeAction, CodeActionKind, TextEdit } from 'vscode-languageserver-types';
 
 import * as Validator from './validator.mjs';
-import { userWords } from './main';
+import { getSettigsForDocument, userWords } from './main';
 
 function extractText(textDocument: TextDocument, range: LangServerRange) {
   return textDocument.getText(range);
@@ -176,9 +176,7 @@ const regexJoinedWords = /[+]/g;
 class SuggestionGenerator {
 
   async genSuggestions(doc: TextDocument, word: string): Promise<SuggestionResult[]> {
-    // TODO: implement cache for settings.
-    const settings = constructSettingsForText(await getDefaultSettings(), doc.getText(), doc.languageId);
-    settings.userWords = [...userWords];
+    const settings = await getSettigsForDocument(doc);
 
     const dictionary = await getDictionary(settings);
     const numSuggestions = 5;
