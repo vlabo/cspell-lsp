@@ -2,7 +2,7 @@
 
 This extension performs spell checking in source code files, using the [cspell library](https://cspell.org/).
 
-This is a fork of [vscode-spell-checker](https://github.com/streetsidesoftware/vscode-spell-checker) and adapted to work with the [Helix text editor](https://helix-editor.com/).
+~This is a fork of~ This was intended as a fork to [vscode-spell-checker](https://github.com/streetsidesoftware/vscode-spell-checker) ~and adapted to work with the~ but its now rewriten to be general basic spell check for [Helix text editor](https://helix-editor.com/) and hopfaly other editors.
 
 ## Build
 ```
