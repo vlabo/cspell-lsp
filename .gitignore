@@ -17,18 +17,6 @@ lib-cov
 # Coverage directory used by tools like istanbul
 coverage
 
-# Grunt intermediate storage (http://gruntjs.com/creating-plugins#storing-task-files)
-.grunt
-
-# node-waf configuration
-.lock-wscript
-
-# Compiled binary addons (http://nodejs.org/api/addons.html)
-build/Release
-*.zip
-*.vsix
-*.tgz
-
 # Dependency directory
 node_modules
 
@@ -38,19 +26,7 @@ node_modules
 # Optional REPL history
 .node_repl_history
 
-.vscode-test
-
 /temp
-/build
-/dist
-packages/*/dist/
-packages/*/out/
-packages/*/temp/
-tools/*/dist/
-tools/*/temp/
-
-!**/server/.vscode
-!**/client/.vscode
 
 # cspell:ignore pids jscoverage wscript
 

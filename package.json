@@ -4,9 +4,7 @@
   "description": "This extension performs spell checking in source code files, using the [cspell library](https://cspell.org/).",
   "main": "index.js",
   "type": "module",
-  "bin": {
-    "cspell-lsp": "dist/main.js"
-  },
+  "bin": "./dist/bundle.mjs",
   "files": [],
   "author": "vlabo",
   "license": "GPL-3.0-only",
@@ -21,9 +19,10 @@
     "@types/node": "^22.10.5"
   },
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/main.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "bun build ./src/main.ts --outfile=dist/bundle.mjs --target=node",
+    "start": "node dist/bundle.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
