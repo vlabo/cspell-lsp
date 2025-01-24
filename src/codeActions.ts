@@ -7,8 +7,8 @@ import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, WorkspaceEdit } from 'vscode-languageserver-types';
 import { CodeAction, CodeActionKind, TextEdit } from 'vscode-languageserver-types';
 
-import * as Validator from './validator.mjs';
-import { getSettigsForDocument, userWords } from './main';
+import * as Validator from './validator.js';
+import { getSettigsForDocument } from './main.js';
 
 function extractText(textDocument: TextDocument, range: LangServerRange) {
   return textDocument.getText(range);
@@ -194,7 +194,7 @@ class SuggestionGenerator {
       // Do not included ties, it could create a long list of suggestions.
       includeTies: false,
     };
-    return dictionary.suggest(word, options).map((s) => ({ ...s, word: s.word.replace(regexJoinedWords, '') }));
+    return dictionary.suggest(word, options).map((s: any) => ({ ...s, word: s.word.replace(regexJoinedWords, '') }));
   }
 
   async genWordSuggestions(doc: TextDocument, word: string): Promise<Validator.Suggestion[]> {

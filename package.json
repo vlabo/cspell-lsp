@@ -1,9 +1,12 @@
 {
   "name": "cspell-lsp",
-  "version": "1.0.4",
+  "version": "1.0.0",
   "description": "This extension performs spell checking in source code files, using the [cspell library](https://cspell.org/).",
   "main": "index.js",
-  "bin": "./dist/bundle.mjs",
+  "type": "module",
+  "bin": {
+    "cspell-lsp": "dist/main.js"
+  },
   "files": [],
   "author": "vlabo",
   "license": "GPL-3.0-only",
@@ -16,5 +19,22 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.5"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vlabo/cspell-lsp.git"
+  },
+  "keywords": [
+    "spellcheck",
+    "spell",
+    "check"
+  ],
+  "bugs": {
+    "url": "https://github.com/vlabo/cspell-lsp/issues"
   }
 }

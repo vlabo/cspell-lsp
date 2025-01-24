@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import {
   CodeActionKind,
   createConnection,
@@ -9,7 +11,7 @@ import {
   ProposedFeatures,
   TextDocuments,
   TextDocumentSyncKind,
-} from "vscode-languageserver/node";
+} from "vscode-languageserver/node.js";
 
 import * as fs from 'fs';
 import * as readline from 'readline';
@@ -17,8 +19,8 @@ import * as readline from 'readline';
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { getDefaultSettings, constructSettingsForText, CSpellSettings } from "cspell-lib";
 
-import * as Validator from './validator.mjs';
-import { createOnCodeActionHandler } from "./codeActions.mts";
+import * as Validator from './validator.js';
+import { createOnCodeActionHandler } from "./codeActions.js";
 
 // Retrieve the arguments array, excluding the first two elements
 const args = process.argv.slice(2);
@@ -109,7 +111,7 @@ connection.onInitialized(() => {
 // });
 
 // Utility function to create a simple code action
-function createCodeAction(title, kind, diagnostics, textEdit) {
+function createCodeAction(title: any, kind: any, diagnostics: any, textEdit: any) {
   return {
     title,
     kind,
@@ -147,7 +149,7 @@ export async function getSettigsForDocument(textDocument: TextDocument) : Promis
     }
     const settings = constructSettingsForText(await getDefaultSettings(), undefined, textDocument.languageId);
     settings.userWords = [...userWords];
-    settingsCache[textDocument.uri] = settings;
+    settingsCache.set(textDocument.uri, settings);
     return settings
 }
 
