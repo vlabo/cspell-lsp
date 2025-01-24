@@ -5,14 +5,9 @@
   "main": "index.js",
   "bin": "./dist/bundle.mjs",
   "files": [],
-  "scripts": {
-    "build": "bun build ./main.ts --outfile=dist/bundle.mjs --target=node",
-    "dev": "npm run build -- --watch",
-    "prepublishOnly": "npm run build"
-  },
-  "author": "mantou132",
+  "author": "vlabo",
   "license": "GPL-3.0-only",
-  "homepage": "https://github.com/mantou132/cspell-lsp#readme",
+  "homepage": "https://github.com/vlabo/cspell-lsp",
   "dependencies": {
     "cspell-lib": "^8.17.1",
     "vscode-languageserver": "^9.0.1",
