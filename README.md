@@ -1,15 +1,14 @@
 # Spell Checker LSP
 
-This extension performs spell checking in source code files, using the [cspell library](https://cspell.org/).
+This lsp performs spell checking in source code files, using the [cspell library](https://cspell.org/).
 
-~This is a fork of~ This was intended as a fork to [vscode-spell-checker](https://github.com/streetsidesoftware/vscode-spell-checker) ~and adapted to work with the~ but its now rewriten to be general basic spell check for [Helix text editor](https://helix-editor.com/) and hopfaly other editors.
+~This is a fork of [vscode-spell-checker](https://github.com/streetsidesoftware/vscode-spell-checker) and adapted to work with the~  
+This was intended as a fork to  but its now rewriten to be general basic spell check for the [Helix text editor](https://helix-editor.com/) and hopfaly other editors.
 
-## Build
+# Install
 ```
-npm install
-bun build ./main.ts --compile --outfile cspell-lsp
+npm install -g @vlabo/cspell-lsp
 ```
-> should work with npm
 
 ## Helix config
 `helix/languages.toml:`  
@@ -32,3 +31,10 @@ name = "markdown"
 language-servers = [ "marksman", "cspell" ]
 ```
 For reference https://github.com/helix-editor/helix/blob/86023cf1e6c9ab12446061e40c838335c5790979/languages.toml
+
+## Build
+```
+npm install
+npm run build
+```
+
