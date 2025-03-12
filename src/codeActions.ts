@@ -75,7 +75,7 @@ class CodeActionHandler {
       kind: CodeActionKind.QuickFix,
       diagnostics: diagnostics,
       command: {
-        title: "Add to dictrionary",
+        title: "Add to dictionary",
         command: "AddToDictionary",
         arguments: [
           {
