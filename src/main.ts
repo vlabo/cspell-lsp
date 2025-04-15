@@ -3,7 +3,6 @@
 import {
   CodeActionKind,
   createConnection,
-  Diagnostic,
   DidChangeConfigurationNotification,
   ExecuteCommandParams,
   InitializeParams,
@@ -24,36 +23,22 @@ import { createOnCodeActionHandler } from "./codeActions.js";
 
 // Retrieve the arguments array, excluding the first two elements
 const args = process.argv.slice(2);
+const dictionaryIndex = args.findIndex((e) => e === "--dictionary") + 1;
 
-let dictionaryPath: string | null = null;
-
-let settingsCache: Map<string, CSpellSettings> = new Map();
-export let userWords: Array<string> = [];
-
-// Iterate over the arguments to find '--dictionary'
-for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--dictionary' && args[i + 1]) {
-    // The next element should be the path to the file
-    try {
-      dictionaryPath = args[i + 1];
-      let stream = fs.createReadStream(dictionaryPath);
-      const rl = readline.createInterface({
-        input: stream,
-        crlfDelay: Infinity  // Recognizes all instances of CR LF as a single line break
-      });
-
-      for await (const line of rl) {
-        userWords.push(line);
-      }
-      break;
-    } catch (err) {
-      console.error(`An error occurred while processing the file: ${err}`);
-    }
-  }
-}
+export let dictionaryPath = dictionaryIndex ? args.at(dictionaryIndex) : null;
+export let userWords: string[] = [];
 
 if (dictionaryPath) {
   console.log(`Dictionary path: ${dictionaryPath}`);
+  try {
+    let stream = fs.createReadStream(dictionaryPath);
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+    for await (const line of rl) {
+      userWords.push(line);
+    }
+  } catch (err) {
+    console.error(`An error occurred while processing the file: ${err}`);
+  }
 } else {
   console.log('No dictionary path provided');
 }
@@ -68,9 +53,7 @@ const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 
-
 connection.onInitialize((_: InitializeParams) => {
-
   const result: InitializeResult = {
     capabilities: {
       textDocumentSync: {
@@ -83,7 +66,7 @@ connection.onInitialize((_: InitializeParams) => {
         codeActionKinds: [CodeActionKind.QuickFix],
       },
       executeCommandProvider: {
-        commands: ['AddToDictionary']
+        commands: ['AddToDictionary', 'AddToConfig'],
       }
     },
   };
@@ -106,24 +89,6 @@ connection.onInitialized(() => {
 });
 
 
-// connection.onDidChangeConfiguration((change) => {
-//   connection.languages.diagnostics.refresh();
-// });
-
-// Utility function to create a simple code action
-function createCodeAction(title: any, kind: any, diagnostics: any, textEdit: any) {
-  return {
-    title,
-    kind,
-    diagnostics,
-    edit: {
-      changes: {
-        [textEdit.uri]: [textEdit]
-      }
-    }
-  };
-}
-
 connection.onCodeAction(createOnCodeActionHandler(documents));
 
 // The content of a text document has changed. This event is emitted
@@ -132,31 +97,35 @@ documents.onDidChangeContent((change) => {
   validateTextDocument(change.document);
 });
 
-async function validateTextDocument(
-  textDocument: TextDocument,
-): Promise<void> {
-  const settings = await getSettigsForDocument(textDocument);
+async function validateTextDocument(textDocument: TextDocument): Promise<void> {
+  const settings = await getSettingsForDocument(textDocument);
 
-  const diagnostics: Diagnostic[] = await Validator.validateTextDocument(textDocument, settings);
-  // Send the computed diagnostics to the editor.
-  connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+  connection.sendDiagnostics({
+    uri: textDocument.uri,
+    diagnostics: await Validator.validateTextDocument(textDocument, settings),
+  });
 }
 
-export async function getSettigsForDocument(textDocument: TextDocument) : Promise<CSpellSettings> {
-    let cached = settingsCache.get(textDocument.uri);
-    if(cached) {
-      return cached;
-    }
-    const settings = constructSettingsForText(await getDefaultSettings(), undefined, textDocument.languageId);
-    settings.userWords = [...userWords];
-    settingsCache.set(textDocument.uri, settings);
-    return settings
+const settingsCache: Map<string, CSpellSettings> = new Map();
+
+export async function getSettingsForDocument(textDocument: TextDocument) {
+  let cached = settingsCache.get(textDocument.uri);
+  if (cached) {
+    return cached;
+  }
+  const settings = constructSettingsForText(
+    await getDefaultSettings(),
+    undefined,
+    textDocument.languageId
+  );
+  settings.userWords = [...userWords];
+  settingsCache.set(textDocument.uri, settings);
+  return settings;
 }
 
 connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
-
   const { command, arguments: args } = params;
-  if (command == "AddToDictionary") {
+  if (command == "AddToDictionary" || command == "AddToConfig") {
     const diagnosticInfo = args![0];
     const { uri, range } = diagnosticInfo;
     const document = documents.get(uri!);
@@ -167,13 +136,35 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
     if (word) {
       // Add the word to the custom dictionary
       userWords.push(word);
-      // Add to fictionary file
-      if (dictionaryPath) {
-        fs.appendFile(dictionaryPath, word + "\n", () => { });
+      // Add to dictionary file
+      switch (command) {
+        case "AddToDictionary":
+          {
+            if (dictionaryPath) {
+              fs.appendFile(dictionaryPath, word + "\n", () => { });
+            }
+            break;
+          }
+        case "AddToConfig":
+          {
+            const filename = "cspell.json";
+
+            if (!fs.existsSync(filename)) {
+              fs.writeFileSync(filename, "{}");
+            }
+            const cspellConfig = JSON.parse(
+              fs.readFileSync(filename, { encoding: "utf8" })
+            ) as CSpellSettings;
+            (cspellConfig.words ||= []).push(word);
+            fs.writeFileSync(filename, JSON.stringify(cspellConfig, null, 2));
+            break;
+          }
       }
-      await validateTextDocument(document);
+
       // Clear settings cache
-      settingsCache = new Map();
+      settingsCache.clear();
+
+      validateTextDocument(document);
       return { result: `Added "${word}" to the dictionary.` };
     }
 
