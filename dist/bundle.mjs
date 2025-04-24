@@ -48087,11 +48087,11 @@ class CodeActionHandler {
     };
     const actions = await this.handlerCSpell({ ...ctx, diags: spellCheckerDiags });
     const codeAction = {
-      title: "Add to dictrionary",
+      title: "Add to dictionary",
       kind: CodeActionKind.QuickFix,
       diagnostics,
       command: {
-        title: "Add to dictrionary",
+        title: "Add to dictionary",
         command: "AddToDictionary",
         arguments: [
           {
