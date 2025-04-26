@@ -1,4 +1,3 @@
-
 import type { SpellingDictionary, SuggestionResult, SuggestOptions } from 'cspell-lib';
 import { CompoundWordsMethod,  getDictionary, IssueType, Text } from 'cspell-lib';
 import type { CodeActionParams, Range as LangServerRange, TextDocuments } from 'vscode-languageserver/node.js';
@@ -8,7 +7,7 @@ import { CodeAction, CodeActionKind, TextEdit } from 'vscode-languageserver-type
 
 import * as Validator from './validator.js';
 
-import { dictionaryPath, getSettingsForDocument } from './main';
+import { getSettingsForDocument } from './main';
 
 function extractDiagnosticData(diag: Diagnostic): Validator.SpellCheckerDiagnosticData {
   const { data } = diag;
@@ -67,24 +66,12 @@ class CodeActionHandler {
       message: diagnostics[0].message
     }
 
-    if (dictionaryPath) {
-      actions.push({
-        title: "Add to dictionary",
-        kind: CodeActionKind.QuickFix,
-        diagnostics: diagnostics,
-        command: {
-          title: "Add to dictionary",
-          command: "AddToDictionary",
-          arguments: [arg]
-        },
-      });
-    }
     actions.push({
-      title: "Add to `cspell.json`",
+      title: "Add to config",
        kind: CodeActionKind.QuickFix,
        diagnostics: diagnostics,
        command: {
-        title: "Add to `cspell.json`",
+        title: "Add to config",
         command: "AddToConfig",
         arguments: [arg]
        },
@@ -188,7 +175,7 @@ class SuggestionGenerator {
     const options: SuggestOptions = {
       numChanges: 3,
       numSuggestions: numSugs,
-      // Turn off compound sugestions for now until it works a bit better.
+      // Turn off compound suggestions for now until it works a bit better.
       compoundMethod: CompoundWordsMethod.NONE,
       ignoreCase: false,
       // Do not included ties, it could create a long list of suggestions.

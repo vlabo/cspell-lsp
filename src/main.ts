@@ -13,34 +13,58 @@ import {
 } from "vscode-languageserver/node.js";
 
 import * as fs from 'fs';
-import * as readline from 'readline';
 
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { getDefaultSettings, constructSettingsForText, CSpellSettings } from "cspell-lib";
+import {
+  getDefaultSettings,
+  constructSettingsForText,
+  CSpellSettings,
+  CSpellUserSettings,
+  mergeSettings
+} from "cspell-lib";
 
 import * as Validator from './validator.js';
 import { createOnCodeActionHandler } from "./codeActions.js";
 
-// Retrieve the arguments array, excluding the first two elements
-const args = process.argv.slice(2);
-const dictionaryIndex = args.findIndex((e) => e === "--dictionary") + 1;
+// Retrieve the arguments array, excluding the first element.
+const args = process.argv.slice(1);
+const configIndex = args.findIndex((e) => e === "--config") + 1;
 
-export let dictionaryPath = dictionaryIndex ? args.at(dictionaryIndex) : null;
-export let userWords: string[] = [];
+const settingsPath = configIndex ? args.at(configIndex) : null;
+export let userSettings: CSpellUserSettings = {};
 
-if (dictionaryPath) {
-  console.log(`Dictionary path: ${dictionaryPath}`);
-  try {
-    let stream = fs.createReadStream(dictionaryPath);
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-    for await (const line of rl) {
-      userWords.push(line);
-    }
-  } catch (err) {
-    console.error(`An error occurred while processing the file: ${err}`);
+function tryReadSettingsFile(file: string): CSpellSettings | null {
+  if (!fs.existsSync(file)) {
+    return null
   }
-} else {
-  console.log('No dictionary path provided');
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (error) {
+    return null;
+  }
+}
+
+// List of settings files try and load.
+// TODO: add more paths
+const fileCandidates = ['./cspell.json', './.cspell.json'];
+let mainSettingsPath: string | undefined;
+
+if (settingsPath) {
+  fileCandidates.unshift(settingsPath);
+  mainSettingsPath = settingsPath;
+}
+
+for (const file of fileCandidates) {
+  let fileSettings = tryReadSettingsFile(file);
+  if (fileSettings) {
+    userSettings = fileSettings;
+    mainSettingsPath = file;
+    break;
+  }
+}
+// Make sure there is settings file path to write to.
+if (!mainSettingsPath) {
+  mainSettingsPath = "./cspell.json"
 }
 
 // Create a connection for the server, using Node's IPC as a transport.
@@ -66,7 +90,7 @@ connection.onInitialize((_: InitializeParams) => {
         codeActionKinds: [CodeActionKind.QuickFix],
       },
       executeCommandProvider: {
-        commands: ['AddToDictionary', 'AddToConfig'],
+        commands: ['AddToConfig'],
       }
     },
   };
@@ -88,18 +112,15 @@ connection.onInitialized(() => {
   }
 });
 
-
 connection.onCodeAction(createOnCodeActionHandler(documents));
 
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
+// This event is emitted when the text document first opened or when its content has changed.
 documents.onDidChangeContent((change) => {
   validateTextDocument(change.document);
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   const settings = await getSettingsForDocument(textDocument);
-
   connection.sendDiagnostics({
     uri: textDocument.uri,
     diagnostics: await Validator.validateTextDocument(textDocument, settings),
@@ -113,19 +134,29 @@ export async function getSettingsForDocument(textDocument: TextDocument) {
   if (cached) {
     return cached;
   }
-  const settings = constructSettingsForText(
+  // WARN: Any changes to userSettings needs to be a copy of the previous object. It has some stupid caching.
+  var settings = constructSettingsForText(
     await getDefaultSettings(),
     undefined,
     textDocument.languageId
   );
-  settings.userWords = [...userWords];
+  copySettings(userSettings, settings);
+
   settingsCache.set(textDocument.uri, settings);
   return settings;
 }
 
-connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
+function copySettings(from: CSpellSettings , to: CSpellSettings) {
+  if(from.userWords) to.userWords = from.userWords;
+  if(from.caseSensitive) to.caseSensitive = from.caseSensitive;
+  if(from.dictionaries) to.dictionaries = from.dictionaries;
+  if(from.dictionaryDefinitions) to.dictionaryDefinitions = from.dictionaryDefinitions;
+  if(from.validateDirectives) to.validateDirectives = from.validateDirectives;
+}
+
+connection.onExecuteCommand((params: ExecuteCommandParams) => {
   const { command, arguments: args } = params;
-  if (command == "AddToDictionary" || command == "AddToConfig") {
+  if (command == "AddToConfig") {
     const diagnosticInfo = args![0];
     const { uri, range } = diagnosticInfo;
     const document = documents.get(uri!);
@@ -134,32 +165,15 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
     }
     const word = document.getText(range);
     if (word) {
-      // Add the word to the custom dictionary
-      userWords.push(word);
-      // Add to dictionary file
-      switch (command) {
-        case "AddToDictionary":
-          {
-            if (dictionaryPath) {
-              fs.appendFile(dictionaryPath, word + "\n", () => { });
-            }
-            break;
-          }
-        case "AddToConfig":
-          {
-            const filename = "cspell.json";
-
-            if (!fs.existsSync(filename)) {
-              fs.writeFileSync(filename, "{}");
-            }
-            const cspellConfig = JSON.parse(
-              fs.readFileSync(filename, { encoding: "utf8" })
-            ) as CSpellSettings;
-            (cspellConfig.words ||= []).push(word);
-            fs.writeFileSync(filename, JSON.stringify(cspellConfig, null, 2));
-            break;
-          }
+      // Add the word to the user words array
+      if (!userSettings.userWords) {
+        userSettings.userWords = [];
       }
+      // WARN: Array must be copied, or the cspell lib does not see the change!?
+      userSettings.userWords = [...userSettings.userWords, word];
+
+      // Write to file
+      fs.writeFileSync(mainSettingsPath, JSON.stringify(userSettings, null, 2));
 
       // Clear settings cache
       settingsCache.clear();
