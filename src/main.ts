@@ -152,6 +152,9 @@ function copySettings(from: CSpellSettings , to: CSpellSettings) {
   if(from.dictionaries) to.dictionaries = from.dictionaries;
   if(from.dictionaryDefinitions) to.dictionaryDefinitions = from.dictionaryDefinitions;
   if(from.validateDirectives) to.validateDirectives = from.validateDirectives;
+  if(from.useGitignore) to.useGitignore = from.useGitignore;
+  if(from.import) to.import = from.import;
+  if(from.languageSettings) to.languageSettings = from.languageSettings;
 }
 
 connection.onExecuteCommand((params: ExecuteCommandParams) => {
