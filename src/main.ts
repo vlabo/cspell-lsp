@@ -147,6 +147,8 @@ export async function getSettingsForDocument(textDocument: TextDocument) {
 }
 
 function copySettings(from: CSpellSettings , to: CSpellSettings) {
+  if(from.language) to.language = from.language;
+  if(from.words) to.words = from.words;
   if(from.userWords) to.userWords = from.userWords;
   if(from.caseSensitive) to.caseSensitive = from.caseSensitive;
   if(from.dictionaries) to.dictionaries = from.dictionaries;
