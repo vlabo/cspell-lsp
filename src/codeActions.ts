@@ -87,6 +87,29 @@ class CodeActionHandler {
       },
     });
 
+    const settings = await getSettingsForDocument(ctx.textDocument);
+    const dictionaries = settings.dictionaries ?? [];
+    if (settings.dictionaryDefinitions && settings.dictionaryDefinitions.length > 0) {
+      const mutableDictionaries = settings.dictionaryDefinitions
+        .filter((dict) => 'path' in dict && 'addWords' in dict && dict.addWords)
+        .filter((dict) => dictionaries.indexOf(dict.name) >= 0 && dictionaries.indexOf(`!${dict.name}`) < 0);
+      const customDictionaryActions = mutableDictionaries.map((dict) => ({
+        title: `Add to ${dict.name} dictionary`,
+        kind: CodeActionKind.QuickFix,
+        diagnostics: diagnostics,
+        command: {
+          title: `Add to ${dict.name} dictionary`,
+          command: "AddToCustomDictionary",
+          arguments: [{
+            ...arg,
+            name: dict.name,
+            path: dict.path
+          }]
+        }
+      }));
+      actions.push(...customDictionaryActions);
+    }
+
     return actions;
   }
 
