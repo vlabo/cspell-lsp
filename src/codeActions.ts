@@ -67,14 +67,24 @@ class CodeActionHandler {
     }
 
     actions.push({
-      title: "Add to config",
+      title: "Add to user words in config",
        kind: CodeActionKind.QuickFix,
        diagnostics: diagnostics,
        command: {
-        title: "Add to config",
-        command: "AddToConfig",
+        title: "Add to user words in config",
+        command: "AddToUserWordsConfig",
         arguments: [arg]
        },
+    });
+    actions.push({
+      title: "Add to workspace words in config",
+      kind: CodeActionKind.QuickFix,
+      diagnostics: diagnostics,
+      command: {
+        title: "Add to workspace words in config",
+        command: "AddToWorkspaceWordsConfig",
+        arguments: [arg]
+      },
     });
 
     return actions;

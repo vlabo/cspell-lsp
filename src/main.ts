@@ -90,7 +90,7 @@ connection.onInitialize((_: InitializeParams) => {
         codeActionKinds: [CodeActionKind.QuickFix],
       },
       executeCommandProvider: {
-        commands: ['AddToConfig'],
+        commands: ['AddToUserWordsConfig', 'AddToWorkspaceWordsConfig'],
       }
     },
   };
@@ -161,7 +161,7 @@ function copySettings(from: CSpellSettings , to: CSpellSettings) {
 
 connection.onExecuteCommand((params: ExecuteCommandParams) => {
   const { command, arguments: args } = params;
-  if (command == "AddToConfig") {
+  if (command == "AddToUserWordsConfig" || command == "AddToWorkspaceWordsConfig") {
     const diagnosticInfo = args![0];
     const { uri, range } = diagnosticInfo;
     const document = documents.get(uri!);
@@ -170,12 +170,13 @@ connection.onExecuteCommand((params: ExecuteCommandParams) => {
     }
     const word = document.getText(range);
     if (word) {
+      const attribute = command == "AddToUserWordsConfig" ? "userWords" : "words"
       // Add the word to the user words array
-      if (!userSettings.userWords) {
-        userSettings.userWords = [];
+      if (!userSettings[attribute]) {
+        userSettings[attribute] = [];
       }
       // WARN: Array must be copied, or the cspell lib does not see the change!?
-      userSettings.userWords = [...userSettings.userWords, word];
+      userSettings[attribute] = [...userSettings[attribute], word];
 
       // Write to file
       fs.writeFileSync(mainSettingsPath, JSON.stringify(userSettings, null, 2));
