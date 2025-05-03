@@ -16,11 +16,11 @@ import * as fs from 'fs';
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
-  getDefaultSettings,
   constructSettingsForText,
   CSpellSettings,
   CSpellUserSettings,
-  mergeSettings
+  getDefaultConfigLoader,
+  readSettings,
 } from "cspell-lib";
 
 import * as Validator from './validator.js';
@@ -47,11 +47,10 @@ function tryReadSettingsFile(file: string): CSpellSettings | null {
 // List of settings files try and load.
 // TODO: add more paths
 const fileCandidates = ['./cspell.json', './.cspell.json'];
-let mainSettingsPath: string | undefined;
+let mainSettingsPath = settingsPath ?? './cspell.json';
 
 if (settingsPath) {
   fileCandidates.unshift(settingsPath);
-  mainSettingsPath = settingsPath;
 }
 
 for (const file of fileCandidates) {
@@ -61,10 +60,6 @@ for (const file of fileCandidates) {
     mainSettingsPath = file;
     break;
   }
-}
-// Make sure there is settings file path to write to.
-if (!mainSettingsPath) {
-  mainSettingsPath = "./cspell.json"
 }
 
 // Create a connection for the server, using Node's IPC as a transport.
@@ -134,29 +129,14 @@ export async function getSettingsForDocument(textDocument: TextDocument) {
   if (cached) {
     return cached;
   }
-  // WARN: Any changes to userSettings needs to be a copy of the previous object. It has some stupid caching.
   var settings = constructSettingsForText(
-    await getDefaultSettings(),
+    await readSettings(mainSettingsPath),
     undefined,
     textDocument.languageId
   );
-  copySettings(userSettings, settings);
 
   settingsCache.set(textDocument.uri, settings);
   return settings;
-}
-
-function copySettings(from: CSpellSettings , to: CSpellSettings) {
-  if(from.language) to.language = from.language;
-  if(from.words) to.words = from.words;
-  if(from.userWords) to.userWords = from.userWords;
-  if(from.caseSensitive) to.caseSensitive = from.caseSensitive;
-  if(from.dictionaries) to.dictionaries = from.dictionaries;
-  if(from.dictionaryDefinitions) to.dictionaryDefinitions = from.dictionaryDefinitions;
-  if(from.validateDirectives) to.validateDirectives = from.validateDirectives;
-  if(from.useGitignore) to.useGitignore = from.useGitignore;
-  if(from.import) to.import = from.import;
-  if(from.languageSettings) to.languageSettings = from.languageSettings;
 }
 
 connection.onExecuteCommand((params: ExecuteCommandParams) => {
@@ -175,8 +155,7 @@ connection.onExecuteCommand((params: ExecuteCommandParams) => {
       if (!userSettings[attribute]) {
         userSettings[attribute] = [];
       }
-      // WARN: Array must be copied, or the cspell lib does not see the change!?
-      userSettings[attribute] = [...userSettings[attribute], word];
+      userSettings[attribute].push(word);
 
       // Write to file
       fs.writeFileSync(mainSettingsPath, JSON.stringify(userSettings, null, 2));
@@ -184,6 +163,7 @@ connection.onExecuteCommand((params: ExecuteCommandParams) => {
       // Clear settings cache
       settingsCache.clear();
 
+      getDefaultConfigLoader().clearCachedSettingsFiles();
       validateTextDocument(document);
       return { result: `Added "${word}" to the dictionary.` };
     }
