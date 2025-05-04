@@ -67,15 +67,48 @@ class CodeActionHandler {
     }
 
     actions.push({
-      title: "Add to config",
+      title: "Add to user words in config",
        kind: CodeActionKind.QuickFix,
        diagnostics: diagnostics,
        command: {
-        title: "Add to config",
-        command: "AddToConfig",
+        title: "Add to user words in config",
+        command: "AddToUserWordsConfig",
         arguments: [arg]
        },
     });
+    actions.push({
+      title: "Add to workspace words in config",
+      kind: CodeActionKind.QuickFix,
+      diagnostics: diagnostics,
+      command: {
+        title: "Add to workspace words in config",
+        command: "AddToWorkspaceWordsConfig",
+        arguments: [arg]
+      },
+    });
+
+    const settings = await getSettingsForDocument(ctx.textDocument);
+    const dictionaries = settings.dictionaries ?? [];
+    if (settings.dictionaryDefinitions && settings.dictionaryDefinitions.length > 0) {
+      const mutableDictionaries = settings.dictionaryDefinitions
+        .filter((dict) => 'path' in dict && 'addWords' in dict && dict.addWords)
+        .filter((dict) => dictionaries.indexOf(dict.name) >= 0 && dictionaries.indexOf(`!${dict.name}`) < 0);
+      const customDictionaryActions = mutableDictionaries.map((dict) => ({
+        title: `Add to ${dict.name} dictionary`,
+        kind: CodeActionKind.QuickFix,
+        diagnostics: diagnostics,
+        command: {
+          title: `Add to ${dict.name} dictionary`,
+          command: "AddToCustomDictionary",
+          arguments: [{
+            ...arg,
+            name: dict.name,
+            path: dict.path
+          }]
+        }
+      }));
+      actions.push(...customDictionaryActions);
+    }
 
     return actions;
   }

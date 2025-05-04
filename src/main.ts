@@ -16,11 +16,12 @@ import * as fs from 'fs';
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
-  getDefaultSettings,
   constructSettingsForText,
   CSpellSettings,
   CSpellUserSettings,
-  mergeSettings
+  getDefaultConfigLoader,
+  readSettings,
+  refreshDictionaryCache
 } from "cspell-lib";
 
 import * as Validator from './validator.js';
@@ -32,6 +33,8 @@ const configIndex = args.findIndex((e) => e === "--config") + 1;
 
 const settingsPath = configIndex ? args.at(configIndex) : null;
 export let userSettings: CSpellUserSettings = {};
+
+const COMMANDS = ['AddToUserWordsConfig', 'AddToWorkspaceWordsConfig', 'AddToCustomDictionary']
 
 function tryReadSettingsFile(file: string): CSpellSettings | null {
   if (!fs.existsSync(file)) {
@@ -47,11 +50,10 @@ function tryReadSettingsFile(file: string): CSpellSettings | null {
 // List of settings files try and load.
 // TODO: add more paths
 const fileCandidates = ['./cspell.json', './.cspell.json'];
-let mainSettingsPath: string | undefined;
+let mainSettingsPath = settingsPath ?? './cspell.json';
 
 if (settingsPath) {
   fileCandidates.unshift(settingsPath);
-  mainSettingsPath = settingsPath;
 }
 
 for (const file of fileCandidates) {
@@ -61,10 +63,6 @@ for (const file of fileCandidates) {
     mainSettingsPath = file;
     break;
   }
-}
-// Make sure there is settings file path to write to.
-if (!mainSettingsPath) {
-  mainSettingsPath = "./cspell.json"
 }
 
 // Create a connection for the server, using Node's IPC as a transport.
@@ -90,7 +88,7 @@ connection.onInitialize((_: InitializeParams) => {
         codeActionKinds: [CodeActionKind.QuickFix],
       },
       executeCommandProvider: {
-        commands: ['AddToConfig'],
+        commands: COMMANDS,
       }
     },
   };
@@ -134,60 +132,62 @@ export async function getSettingsForDocument(textDocument: TextDocument) {
   if (cached) {
     return cached;
   }
-  // WARN: Any changes to userSettings needs to be a copy of the previous object. It has some stupid caching.
   var settings = constructSettingsForText(
-    await getDefaultSettings(),
+    await readSettings(mainSettingsPath),
     undefined,
     textDocument.languageId
   );
-  copySettings(userSettings, settings);
 
   settingsCache.set(textDocument.uri, settings);
   return settings;
 }
 
-function copySettings(from: CSpellSettings , to: CSpellSettings) {
-  if(from.language) to.language = from.language;
-  if(from.words) to.words = from.words;
-  if(from.userWords) to.userWords = from.userWords;
-  if(from.caseSensitive) to.caseSensitive = from.caseSensitive;
-  if(from.dictionaries) to.dictionaries = from.dictionaries;
-  if(from.dictionaryDefinitions) to.dictionaryDefinitions = from.dictionaryDefinitions;
-  if(from.validateDirectives) to.validateDirectives = from.validateDirectives;
-  if(from.useGitignore) to.useGitignore = from.useGitignore;
-  if(from.import) to.import = from.import;
-  if(from.languageSettings) to.languageSettings = from.languageSettings;
-}
-
 connection.onExecuteCommand((params: ExecuteCommandParams) => {
   const { command, arguments: args } = params;
-  if (command == "AddToConfig") {
-    const diagnosticInfo = args![0];
-    const { uri, range } = diagnosticInfo;
-    const document = documents.get(uri!);
-    if (!document) {
-      return { error: `Could not get document for ${uri}` };
-    }
-    const word = document.getText(range);
-    if (word) {
-      // Add the word to the user words array
-      if (!userSettings.userWords) {
-        userSettings.userWords = [];
-      }
-      // WARN: Array must be copied, or the cspell lib does not see the change!?
-      userSettings.userWords = [...userSettings.userWords, word];
+  if (COMMANDS.indexOf(command) < 0) {
+    return;
+  }
 
-      // Write to file
-      fs.writeFileSync(mainSettingsPath, JSON.stringify(userSettings, null, 2));
-
-      // Clear settings cache
-      settingsCache.clear();
-
-      validateTextDocument(document);
-      return { result: `Added "${word}" to the dictionary.` };
-    }
-
+  const diagnosticInfo = args![0];
+  const { uri, range, name: dictName, path: dictPath } = diagnosticInfo;
+  const document = documents.get(uri!);
+  if (!document) {
+    return { error: `Could not get document for ${uri}` };
+  }
+  const word = document.getText(range);
+  if (!word) {
     return { error: 'Could not extract the word from the message.' };
+  }
+
+  if (command == "AddToUserWordsConfig" || command == "AddToWorkspaceWordsConfig") {
+    if (!mainSettingsPath.endsWith(".json")) {
+      return { error: `Only JSON config files are supported` };
+    }
+
+    const attribute = command == "AddToUserWordsConfig" ? "userWords" : "words"
+    // Add the word to the user words array
+    if (!userSettings[attribute]) {
+      userSettings[attribute] = [];
+    }
+    userSettings[attribute].push(word);
+
+    // Write to file
+    fs.writeFileSync(mainSettingsPath, JSON.stringify(userSettings, null, 2));
+
+    // Clear settings cache
+    settingsCache.clear();
+
+    getDefaultConfigLoader().clearCachedSettingsFiles();
+    validateTextDocument(document);
+    return { result: `Added "${word}" to the dictionary.` };
+  }
+  if (command == "AddToCustomDictionary") {
+    // Assumes the file breaks lines with LF and it ends with a \n already,
+    // instead of trying to be clever
+    fs.appendFileSync(dictPath, `${word}\n`);
+
+    refreshDictionaryCache(0).then(() => validateTextDocument(document));
+    return { result: `Added ${word} to ${dictName} dictionary.` };
   }
 
 });
