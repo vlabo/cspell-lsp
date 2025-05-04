@@ -17,7 +17,7 @@ npm install -g @vlabo/cspell-lsp
 ```toml
 [language-server.cspell]
 command = "cspell-lsp"
-args = ["--stdio", "--config", "<path to cspell.json>"]
+args = ["--stdio", "--config", "<path to cspell.json>"] # If the --config parameter is missing it will use the project cspell.json file.
 
 # Add for every language that you want to spell check
 [[language]]
@@ -34,14 +34,14 @@ language-servers = [ "marksman", "cspell" ]
 ```
 For reference https://github.com/helix-editor/helix/blob/86023cf1e6c9ab12446061e40c838335c5790979/languages.toml
 
-## Vim config - Zero LSP
+## Neovim config - Zero LSP
 ```lua
 local lsp_configurations = require('lspconfig.configs')
 
 if not lsp_configurations.cspell_lsp then
   lsp_configurations.cspell_lsp = {
     default_config = {
-      cmd = {"<path-to-cspell-lsp>", "--stdio", "--config", "<path to cspell.json>"},
+      cmd = {"<path-to-cspell-lsp>", "--stdio", "--config", "<path to cspell.json>"}, -- If the --config parameter is missing it will use the project cspell.json file.
       filetypes = {"go", "rust", "js", "ts", "html", "css", "json", "yaml", "markdown", "gitcommit"},
       root_dir = require('lspconfig.util').root_pattern('.git')
     }
