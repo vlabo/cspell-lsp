@@ -20,6 +20,8 @@ import {
   CSpellSettings,
   CSpellUserSettings,
   getDefaultConfigLoader,
+  getDefaultSettings,
+  mergeSettings,
   readSettings,
   refreshDictionaryCache
 } from "cspell-lib";
@@ -33,6 +35,7 @@ const configIndex = args.findIndex((e) => e === "--config") + 1;
 
 const settingsPath = configIndex ? args.at(configIndex) : null;
 export let userSettings: CSpellUserSettings = {};
+let defaultSettings: CSpellUserSettings = {};
 
 const COMMANDS = ['AddToUserWordsConfig', 'AddToWorkspaceWordsConfig', 'AddToCustomDictionary']
 
@@ -75,7 +78,8 @@ const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 
-connection.onInitialize((_: InitializeParams) => {
+connection.onInitialize((params: InitializeParams) => {
+  defaultSettings = params.initializationOptions.defaultSettings ?? {};
   const result: InitializeResult = {
     capabilities: {
       textDocumentSync: {
@@ -132,14 +136,19 @@ export async function getSettingsForDocument(textDocument: TextDocument) {
   if (cached) {
     return cached;
   }
-  var settings = constructSettingsForText(
-    await readSettings(mainSettingsPath),
-    undefined,
-    textDocument.languageId
-  );
+  // Let cspell read mainSettingsPath if it exists, otherwise fall back to
+  // getDefaultSettings() + user defaultSettings overrides
+  var workspaceSettings;
+  if (fs.existsSync(mainSettingsPath)) {
+    workspaceSettings = await readSettings(mainSettingsPath);
+  } else {
+    workspaceSettings = mergeSettings(await getDefaultSettings(), defaultSettings);
+  }
+  // Generate documentSettings based on workspaceSettings
+  const documentSettings = constructSettingsForText(workspaceSettings, undefined, textDocument.languageId);
 
-  settingsCache.set(textDocument.uri, settings);
-  return settings;
+  settingsCache.set(textDocument.uri, documentSettings);
+  return documentSettings;
 }
 
 connection.onExecuteCommand((params: ExecuteCommandParams) => {
@@ -162,6 +171,13 @@ connection.onExecuteCommand((params: ExecuteCommandParams) => {
   if (command == "AddToUserWordsConfig" || command == "AddToWorkspaceWordsConfig") {
     if (!mainSettingsPath.endsWith(".json")) {
       return { error: `Only JSON config files are supported` };
+    }
+
+    // Main config does not exist. Create a new one with defaultSettings + new word,
+    // so that next time user adds a word, readSettings(mainSettingsPath) contains
+    // defaultSettings
+    if (!fs.existsSync(mainSettingsPath)) {
+      userSettings = defaultSettings;
     }
 
     const attribute = command == "AddToUserWordsConfig" ? "userWords" : "words"
