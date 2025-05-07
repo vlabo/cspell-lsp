@@ -79,7 +79,7 @@ let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 
 connection.onInitialize((params: InitializeParams) => {
-  defaultSettings = params.initializationOptions.defaultSettings ?? {};
+  defaultSettings = params.initializationOptions?.defaultSettings ?? {};
   const result: InitializeResult = {
     capabilities: {
       textDocumentSync: {
@@ -140,7 +140,7 @@ export async function getSettingsForDocument(textDocument: TextDocument) {
   // getDefaultSettings() + user defaultSettings overrides
   var workspaceSettings;
   if (fs.existsSync(mainSettingsPath)) {
-    workspaceSettings = await readSettings(mainSettingsPath);
+    workspaceSettings = mergeSettings(await getDefaultSettings(), await readSettings(mainSettingsPath));
   } else {
     workspaceSettings = mergeSettings(await getDefaultSettings(), defaultSettings);
   }
