@@ -28,12 +28,21 @@ import {
 
 import * as Validator from './validator.js';
 import { createOnCodeActionHandler } from "./codeActions.js";
+import commandLineArgs from 'command-line-args';
+
+const optionDefinitions = [
+  { name: 'config', alias: 'c', type: String, defaultValue: null },
+  { name: 'sortWords', type: Boolean, defaultValue: false },
+  { name: 'stdio', type: String },
+];
+
+const options = commandLineArgs(optionDefinitions);
 
 // Retrieve the arguments array, excluding the first element.
-const args = process.argv.slice(1);
-const configIndex = args.findIndex((e) => e === "--config") + 1;
+// const args = process.argv.slice(1);
+// const configIndex = args.findIndex((e) => e === "--config") + 1;
 
-const settingsPath = configIndex ? args.at(configIndex) : null;
+const settingsPath = options.config;
 export let userSettings: CSpellUserSettings = {};
 let defaultSettings: CSpellUserSettings = {};
 
@@ -186,6 +195,12 @@ connection.onExecuteCommand((params: ExecuteCommandParams) => {
       userSettings[attribute] = [];
     }
     userSettings[attribute].push(word);
+
+    // Sort words before write if settings in enabled
+    if(options.sortWords) {
+      userSettings.userWords?.sort((a, b) => a.localeCompare(b, 'en', {'sensitivity': 'base'}))
+      userSettings.words?.sort((a, b) => a.localeCompare(b, 'en', {'sensitivity': 'base'}))
+    }
 
     // Write to file
     fs.writeFileSync(mainSettingsPath, JSON.stringify(userSettings, null, 2));
