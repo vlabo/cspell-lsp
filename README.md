@@ -12,6 +12,14 @@ Community support for [Zed](https://zed.dev/) by @mantou132 [zed-cspell](https:/
 npm install -g @vlabo/cspell-lsp
 ```
 
+## Arguments
+
+```
+--config, -c -> path to cspell.json config file. If not supplied the lsp will try to create a file in the root of the project. (optional)
+--sortWords  -> Sorts the words in the config file (optional)
+--stdio      -> Type of communication with the editor. 
+```
+
 ## Helix config
 `helix/languages.toml:`  
 ```toml

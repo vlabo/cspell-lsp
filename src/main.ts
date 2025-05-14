@@ -38,10 +38,6 @@ const optionDefinitions = [
 
 const options = commandLineArgs(optionDefinitions);
 
-// Retrieve the arguments array, excluding the first element.
-// const args = process.argv.slice(1);
-// const configIndex = args.findIndex((e) => e === "--config") + 1;
-
 const settingsPath = options.config;
 export let userSettings: CSpellUserSettings = {};
 let defaultSettings: CSpellUserSettings = {};
