@@ -4,6 +4,7 @@ import {
   CodeActionKind,
   createConnection,
   DidChangeConfigurationNotification,
+  DidChangeWatchedFilesNotification,
   ExecuteCommandParams,
   InitializeParams,
   InitializeResult,
@@ -25,8 +26,6 @@ import {
   getDefaultSettings,
   mergeSettings,
   readSettings,
-  searchForConfig,
-  refreshDictionaryCache
 } from "cspell-lib";
 
 import * as Validator from './validator.js';
@@ -102,6 +101,16 @@ connection.onInitialized(() => {
       connection.console.log("Workspace folder change event received.");
     });
   }
+
+  // Watch for changes in cspell config files
+  connection.client.register(DidChangeWatchedFilesNotification.type, {
+      watchers: [{ globPattern: '**/cspell.{json,yaml,yml}' }, { globPattern: '**/.cspell.json' }],
+  });
+});
+
+connection.onDidChangeWatchedFiles((_change) => {
+    connection.console.log('Configuration file changed. Revalidating all open documents.');
+    revalidateAllOpenDocuments();
 });
 
 connection.onCodeAction(createOnCodeActionHandler(documents));
@@ -117,6 +126,14 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     uri: textDocument.uri,
     diagnostics: await Validator.validateTextDocument(textDocument, settings),
   });
+}
+
+function revalidateAllOpenDocuments() {
+    settingsCache.clear();
+    getDefaultConfigLoader().clearCachedSettingsFiles();
+    for (const doc of documents.all()) {
+        validateTextDocument(doc);
+    }
 }
 
 const settingsCache: Map<string, CSpellSettings> = new Map();
@@ -210,14 +227,9 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
     // Write to file
     fs.writeFileSync(configPath, JSON.stringify(currentSettings, null, 2));
 
-    // Clear settings cache
-    settingsCache.clear();
-
-    getDefaultConfigLoader().clearCachedSettingsFiles();
-    validateTextDocument(document);
+    revalidateAllOpenDocuments();
     return { result: `Added "${word}" to the dictionary.` };
   }
-
 });
 
 // Make the text document manager listen on the connection
