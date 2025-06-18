@@ -36,10 +36,10 @@ export async function validateTextDocument(textDocument: TextDocument, settings:
     const severity = DiagnosticSeverity.Information;
     const severityFlaggedWords = DiagnosticSeverity.Information;
     const limit = defaultCheckLimit;
-    const content = textDocument.getText().slice(0, limit);
+    const truncatedContent = textDocument.getText().slice(0, limit);
     const docInfo = {
         uri: textDocument.uri,
-        content,
+        content: truncatedContent,
         languageId: textDocument.languageId,
         version: textDocument.version,
     };
@@ -78,7 +78,8 @@ export async function validateTextDocument(textDocument: TextDocument, settings:
 }
 
 function haveSuggestionsMatchCase(example: string, suggestions: Suggestion[] | undefined): Suggestion[] | undefined {
-    if (!suggestions || TextUtil.isLowerCase(example)) return suggestions;
+    if (!suggestions) return undefined;
+    if (TextUtil.isLowerCase(example)) return suggestions;
     return suggestions.map((sug) => (TextUtil.isLowerCase(sug.word) ? { ...sug, word: TextUtil.matchCase(example, sug.word) } : sug));
 }
 

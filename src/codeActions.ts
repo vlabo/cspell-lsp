@@ -45,12 +45,8 @@ class CodeActionHandler {
     const textDocument = this.documents.get(uri);
     if (!textDocument) return [];
 
-    const rangeIntersectDiags = [...spellCheckerDiags]
-      .map((diag) => diag.range)
-      .reduce((a: LangServerRange | undefined, _) => a, params.range);
-
     // Only provide suggestions if the selection is contained in the diagnostics.
-    if (!rangeIntersectDiags || !isWordLikeSelection(textDocument, params.range)) {
+    if (!isWordLikeSelection(textDocument, params.range)) {
       return [];
     }
 
@@ -136,7 +132,7 @@ class CodeActionHandler {
         const { issueType = IssueType.spelling, suggestions } = extractDiagnosticData(diag);
         const srcWord = textDocument.getText(diag.range);
         diagWord = diagWord || srcWord;
-        const sugs: Validator.Suggestion[] = suggestions ?? (await getSuggestions(srcWord));
+        const sugs: Validator.Suggestion[] = suggestions ?? (await getSuggestions(srcWord)) ?? [];
         sugs.map(({ word, isPreferred }) => ({ word: Text.isLowerCase(word) ? Text.matchCase(srcWord, word) : word, isPreferred }))
           .forEach((sug) => {
             const sugWord = sug.word;
