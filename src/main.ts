@@ -28,6 +28,7 @@ import {
   getGlobalSettingsAsync,
   mergeSettings,
   readSettings,
+  refreshDictionaryCache,
 } from "cspell-lib";
 
 import * as Validator from './validator.js';
@@ -44,7 +45,7 @@ const options = commandLineArgs(optionDefinitions);
 
 let defaultSettings: CSpellUserSettings = {};
 
-const COMMANDS = ['AddToUserWordsConfig', 'AddToWorkspaceWordsConfig']
+const COMMANDS = ['AddToUserWordsConfig', 'AddToWorkspaceWordsConfig', 'AddToCustomDictionary']
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -249,6 +250,14 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
 
     revalidateAllOpenDocuments();
     return { result: `Added "${word}" to the dictionary.` };
+  }
+  if (command == "AddToCustomDictionary") {
+    // Assumes the file breaks lines with LF and it ends with a \n already,
+    // instead of trying to be clever
+    fs.appendFileSync(dictPath, `${word}\n`);
+
+    refreshDictionaryCache(0).then(() => revalidateAllOpenDocuments());
+    return { result: `Added ${word} to ${dictName} dictionary.` };
   }
 });
 
