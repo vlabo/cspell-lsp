@@ -105,6 +105,18 @@ connection.onInitialized(async () => {
   }
 
   const watchers: FileSystemWatcher[] = [{ globPattern: '**/cspell.{json,yaml,yml}' }, { globPattern: '**/.cspell.json' }];
+  if (options.config) {
+    let baseUri: string;
+    let pattern: string;
+    if (path.isAbsolute(options.config)) {
+      baseUri = 'file://' + path.dirname(options.config);
+      pattern = path.basename(options.config);
+    } else {
+      baseUri = 'file://' + process.cwd();
+      pattern = options.config.startsWith('.' + path.sep) ? options.config.substring(2) : options.config;
+    }
+    watchers.push({ globPattern: { baseUri, pattern } });
+  }
   const globalConfig = await getGlobalSettingsAsync();
   // getGlobalSettingsAsync returns with globRoot even if global config doesn't exist
   if (globalConfig.globRoot && fs.existsSync(globalConfig.globRoot)) {
