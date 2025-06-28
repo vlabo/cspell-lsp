@@ -20,6 +20,12 @@ npm install -g @vlabo/cspell-lsp
 --stdio      -> Type of communication with the editor. 
 ```
 
+`cspell-lsp` also reads the global `cspell.json` in:
+
+- Linux: `~/.config/cspell/`
+- macOS: `~/Library/Preferences/cspell/`
+- Windows: `%AppData%\cspell\Config\`
+
 ## Helix config
 `helix/languages.toml:`  
 ```toml

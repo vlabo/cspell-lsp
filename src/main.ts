@@ -6,6 +6,7 @@ import {
   DidChangeConfigurationNotification,
   DidChangeWatchedFilesNotification,
   ExecuteCommandParams,
+  FileSystemWatcher,
   InitializeParams,
   InitializeResult,
   ProposedFeatures,
@@ -24,6 +25,7 @@ import {
   CSpellUserSettings,
   getDefaultConfigLoader,
   getDefaultSettings,
+  getGlobalSettingsAsync,
   mergeSettings,
   readSettings,
 } from "cspell-lib";
@@ -88,7 +90,7 @@ connection.onInitialize((params: InitializeParams) => {
   return result;
 });
 
-connection.onInitialized(() => {
+connection.onInitialized(async () => {
   if (hasConfigurationCapability) {
     // Register for all configuration changes.
     connection.client.register(
@@ -102,10 +104,16 @@ connection.onInitialized(() => {
     });
   }
 
+  const watchers: FileSystemWatcher[] = [{ globPattern: '**/cspell.{json,yaml,yml}' }, { globPattern: '**/.cspell.json' }];
+  const globalConfig = await getGlobalSettingsAsync();
+  // getGlobalSettingsAsync returns with globRoot even if global config doesn't exist
+  if (globalConfig.globRoot && fs.existsSync(globalConfig.globRoot)) {
+    const baseUri = 'file://' + globalConfig.globRoot;
+    // https://github.com/streetsidesoftware/cspell/blob/1bee5f5aa4429a1b1ae0e88934b093c5440b44dc/packages/cspell-lib/src/lib/Settings/cfgStore.ts#L15
+    watchers.push({ globPattern: { baseUri, pattern: 'cspell.json' } });
+  }
   // Watch for changes in cspell config files
-  connection.client.register(DidChangeWatchedFilesNotification.type, {
-      watchers: [{ globPattern: '**/cspell.{json,yaml,yml}' }, { globPattern: '**/.cspell.json' }],
-  });
+  connection.client.register(DidChangeWatchedFilesNotification.type, { watchers });
 });
 
 connection.onDidChangeWatchedFiles((_change) => {
@@ -157,7 +165,7 @@ export async function getSettingsForDocument(textDocument: TextDocument) {
     config = docPath ? await configLoader.searchForConfig(docPath) : undefined;
   }
 
-  const settings = mergeSettings(await getDefaultSettings(), defaultSettings, config || {});
+  const settings = mergeSettings(await getDefaultSettings(), await getGlobalSettingsAsync(), defaultSettings, config || {});
   const documentSettings = constructSettingsForText(settings, undefined, textDocument.languageId);
 
   settingsCache.set(textDocument.uri, documentSettings);
