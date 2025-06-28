@@ -28,6 +28,7 @@ import {
   getGlobalSettingsAsync,
   mergeSettings,
   readSettings,
+  refreshDictionaryCache,
 } from "cspell-lib";
 
 import * as Validator from './validator.js';
@@ -44,7 +45,7 @@ const options = commandLineArgs(optionDefinitions);
 
 let defaultSettings: CSpellUserSettings = {};
 
-const COMMANDS = ['AddToUserWordsConfig', 'AddToWorkspaceWordsConfig']
+const COMMANDS = ['AddToUserWordsConfig', 'AddToWorkspaceWordsConfig', 'AddToCustomDictionary']
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -56,6 +57,8 @@ const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let workspaceRoot: string | undefined;
+
+const watchingCustomDictionaries: Set<string> = new Set()
 
 connection.onInitialize((params: InitializeParams) => {
   defaultSettings = params.initializationOptions?.defaultSettings ?? {};
@@ -128,9 +131,13 @@ connection.onInitialized(async () => {
   connection.client.register(DidChangeWatchedFilesNotification.type, { watchers });
 });
 
-connection.onDidChangeWatchedFiles((_change) => {
+connection.onDidChangeWatchedFiles((change) => {
     connection.console.log('Configuration file changed. Revalidating all open documents.');
-    revalidateAllOpenDocuments();
+    if (change.changes.some((c) => watchingCustomDictionaries.has(c.uri.substring('file://'.length)))) {
+      refreshDictionaryCache(0).then(() => revalidateAllOpenDocuments());
+    } else {
+      revalidateAllOpenDocuments();
+    }
 });
 
 connection.onCodeAction(createOnCodeActionHandler(documents));
@@ -179,6 +186,19 @@ export async function getSettingsForDocument(textDocument: TextDocument) {
 
   const settings = mergeSettings(await getDefaultSettings(), await getGlobalSettingsAsync(), defaultSettings, config || {});
   const documentSettings = constructSettingsForText(settings, undefined, textDocument.languageId);
+
+  // Add new custom dictionaries to watchers
+  documentSettings
+    .dictionaryDefinitions
+    ?.filter((dict) => dict.path !== undefined)
+    .filter((dict) => !!dict.addWords)
+    .filter((dict) => !watchingCustomDictionaries.has(dict.path))
+    .forEach((dict) => {
+      const baseUri = 'file://' + path.dirname(dict.path);
+      const pattern = path.basename(dict.path);
+      connection.client.register(DidChangeWatchedFilesNotification.type, { watchers: [{ globPattern: { baseUri, pattern } }] });
+      watchingCustomDictionaries.add(dict.path);
+    });
 
   settingsCache.set(textDocument.uri, documentSettings);
   return documentSettings;
@@ -249,6 +269,14 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
 
     revalidateAllOpenDocuments();
     return { result: `Added "${word}" to the dictionary.` };
+  }
+  if (command == "AddToCustomDictionary") {
+    // Assumes the file breaks lines with LF and it ends with a \n already,
+    // instead of trying to be clever
+    fs.appendFileSync(dictPath, `${word}\n`);
+
+    refreshDictionaryCache(0).then(() => revalidateAllOpenDocuments());
+    return { result: `Added ${word} to ${dictName} dictionary.` };
   }
 });
 
