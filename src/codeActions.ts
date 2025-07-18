@@ -1,7 +1,7 @@
 import type { SpellingDictionary, SuggestionResult, SuggestOptions } from 'cspell-lib';
 import { CompoundWordsMethod,  getDictionary, IssueType, Text } from 'cspell-lib';
 import type { CodeActionParams, Range as LangServerRange, TextDocuments } from 'vscode-languageserver/node.js';
-import type { TextDocument } from 'vscode-languageserver-textdocument';
+import type { Position, TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, WorkspaceEdit } from 'vscode-languageserver-types';
 import { CodeAction, CodeActionKind, TextEdit } from 'vscode-languageserver-types';
 
@@ -110,13 +110,11 @@ class CodeActionHandler {
   }
 
   private async handlerCSpell(handlerContext: CodeActionHandlerContext) {
-    const { textDocument, diags: spellCheckerDiags } = handlerContext;
+    const { params, textDocument, diags: spellCheckerDiags } = handlerContext;
     const actions: CodeAction[] = [];
     const uri = textDocument.uri;
+    const cursorRange = params.range;
     if (!spellCheckerDiags.length) return [];
-
-    // We do not want to clutter the actions when someone is trying to refactor code
-    if (spellCheckerDiags.length > 1) return [];
 
     function replaceText(range: LangServerRange, text?: string) {
       return TextEdit.replace(range, text || '');
@@ -126,9 +124,23 @@ class CodeActionHandler {
       return this.sugGen.genWordSuggestions(textDocument, word);
     };
 
+    // A helper function to check if a position is inside a range.
+    function isPositionInRange(pos: Position, range: LangServerRange) {
+        return (
+            pos.line === range.start.line &&
+            pos.character >= range.start.character &&
+            pos.character <= range.end.character
+        );
+    }
+
+    // Find the specific diagnostic the user is pointing at.
+    const relevantDiagnostics = spellCheckerDiags.filter((diag: Diagnostic) =>
+        isPositionInRange(cursorRange.start, diag.range)
+    );
+
     async function genCodeActionsForSuggestions(_dictionary: SpellingDictionary) {
       let diagWord: string | undefined;
-      for (const diag of spellCheckerDiags) {
+      for (const diag of relevantDiagnostics) {
         const { issueType = IssueType.spelling, suggestions } = extractDiagnosticData(diag);
         const srcWord = textDocument.getText(diag.range);
         diagWord = diagWord || srcWord;
@@ -138,7 +150,6 @@ class CodeActionHandler {
             const sugWord = sug.word;
             const title = suggestionToTitle(sug, issueType);
             if (!title) return;
-            // const cmd = createCommand(title, 'cSpell.editText', uri, textDocument.version, [replaceText(diag.range, sugWord)]);
             var workspaceEdit: WorkspaceEdit = {
               changes: { [uri]: [replaceText(diag.range, sugWord)] }
             };
