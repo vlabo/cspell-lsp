@@ -1,5 +1,7 @@
 # Spell Checker LSP
 
+> ⚠️ This project is depercated in favor of [codebook](https://github.com/blopker/codebook).  
+
 This lsp performs spell checking in source code files, using the [cspell library](https://cspell.org/).
 
 ~This is a fork of [vscode-spell-checker](https://github.com/streetsidesoftware/vscode-spell-checker) and adapted to work with the~  
