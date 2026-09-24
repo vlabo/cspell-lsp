@@ -17,6 +17,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { parse as parseJsonc, stringify as stringifyJsonc } from 'comment-json';
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
@@ -233,9 +234,11 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
 
     if (configPath) {
         try {
-            currentSettings = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+            currentSettings = parseJsonc(fs.readFileSync(configPath, 'utf-8')) as CSpellUserSettings;
         } catch (e) {
-            // It might not exist, which is fine, we will create it.
+            if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+                return { error: `Could not parse ${configPath}: ${(e as Error).message}` };
+            }
         }
     } else {
         if (!workspaceRoot) {
@@ -265,7 +268,7 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
     }
 
     // Write to file
-    fs.writeFileSync(configPath, JSON.stringify(currentSettings, null, 2));
+    fs.writeFileSync(configPath, stringifyJsonc(currentSettings, null, 2));
 
     revalidateAllOpenDocuments();
     return { result: `Added "${word}" to the dictionary.` };
